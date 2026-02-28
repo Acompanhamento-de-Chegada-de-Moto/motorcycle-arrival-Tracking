@@ -1,20 +1,47 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getEntradasLogistica, addEntradaLogistica, addMultipleEntradasLogistica } from "@/lib/store"
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
+// Fetch multiples datas types
 export async function GET() {
-  return NextResponse.json(getEntradasLogistica())
+  try {
+    const motorcycle = await prisma.motorcycleArrival.findMany();
+
+    console.log(motorcycle);
+
+    return NextResponse.json(motorcycle);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        message: "Something wrong happened while retrieving a motorcycle",
+      },
+      { status: 400 },
+    );
+  }
 }
 
+// create multiples entry's
 export async function POST(request: NextRequest) {
-  const body = await request.json()
+  try {
+    const body = await request.json();
 
-  // Se for array, importacao em lote
-  if (Array.isArray(body)) {
-    const resultado = addMultipleEntradasLogistica(body)
-    return NextResponse.json(resultado, { status: 201 })
+    const { chassi, dataChegada, modelo } = body;
+
+    const motorcycle = await prisma.motorcycleArrival.create({
+      data: {
+        chassi,
+        dataChegada: new Date(dataChegada),
+        modelo,
+        criadoEm: new Date(),
+      },
+    });
+
+    return NextResponse.json(motorcycle, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        message: "Something wrong happened while creating a motorcycle",
+      },
+      { status: 400 },
+    );
   }
-
-  // Entrada individual
-  const entrada = addEntradaLogistica(body)
-  return NextResponse.json(entrada, { status: 201 })
 }

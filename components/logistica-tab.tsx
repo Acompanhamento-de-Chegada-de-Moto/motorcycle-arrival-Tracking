@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useRef, useCallback } from "react"
-import useSWR, { mutate } from "swr"
+import { useState, useRef, useCallback } from "react";
+import useSWR, { mutate } from "swr";
 import {
   Plus,
   Upload,
@@ -11,12 +11,18 @@ import {
   FileSpreadsheet,
   Check,
   X,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -24,7 +30,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -32,141 +38,117 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog"
-import type { EntradaLogistica } from "@/lib/types"
+} from "@/components/ui/dialog";
+import type { EntradaLogistica } from "@/lib/types";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const LOGISTICA_PASSWORD = "log2026"
+const LOGISTICA_PASSWORD = "log2026";
 
 function formatDate(dateStr?: string) {
-  if (!dateStr) return "-"
-  const date = new Date(dateStr + "T00:00:00")
-  return date.toLocaleDateString("pt-BR")
+  if (!dateStr) return "-";
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("pt-BR");
 }
 
 export function LogisticaTab() {
-  const [authenticated, setAuthenticated] = useState(false)
-  const [password, setPassword] = useState("")
-  const [passwordError, setPasswordError] = useState(false)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState<{
-    adicionados: number
-    atualizados: number
-  } | null>(null)
+    adicionados: number;
+    atualizados: number;
+  } | null>(null);
   const [form, setForm] = useState({
     chassi: "",
     modelo: "",
     dataChegada: "",
-  })
-  const [saving, setSaving] = useState(false)
-  const [importing, setImporting] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  });
+  const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: entradas, isLoading } = useSWR<EntradaLogistica[]>(
     authenticated ? "/api/logistica" : null,
-    fetcher
-  )
+    fetcher,
+  );
 
   const handleLogin = () => {
     if (password === LOGISTICA_PASSWORD) {
-      setAuthenticated(true)
-      setPasswordError(false)
+      setAuthenticated(true);
+      setPasswordError(false);
     } else {
-      setPasswordError(true)
+      setPasswordError(true);
     }
-  }
+  };
 
   const handleLogout = () => {
-    setAuthenticated(false)
-    setPassword("")
-  }
+    setAuthenticated(false);
+    setPassword("");
+  };
 
   const handleSave = useCallback(async () => {
-    setSaving(true)
+    setSaving(true);
     try {
       await fetch("/api/logistica", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
-      })
-      mutate("/api/logistica")
-      mutate("/api/clientes")
-      setDialogOpen(false)
-      setForm({ chassi: "", modelo: "", dataChegada: "" })
+      });
+      mutate("/api/logistica");
+      mutate("/api/clientes");
+      setDialogOpen(false);
+      setForm({ chassi: "", modelo: "", dataChegada: "" });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }, [form])
+  }, [form]);
 
-  const handleImportExcel = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleImportExcel = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    setImporting(true)
-    setImportResult(null)
+      setImporting(true);
+      setImportResult(null);
 
-    try {
-      const XLSX = await import("xlsx")
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet)
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const entradas = rows.map((row) => {
-        const chassi = String(
-          row["chassi"] || row["Chassi"] || row["CHASSI"] || ""
-        ).trim()
-        const modelo = String(
-          row["modelo"] || row["Modelo"] || row["MODELO"] || ""
-        ).trim()
+        const fileUpload = await fetch("/api/logistica/planilha", {
+          method: "POST",
+          body: formData,
+        });
 
-        let dataChegada = ""
-        const rawDate = row["dataChegada"] || row["Data Chegada"] || row["DATA_CHEGADA"] || row["data_chegada"] || ""
-        if (rawDate) {
-          if (typeof rawDate === "number") {
-            // Excel serial date
-            const excelDate = XLSX.SSF.parse_date_code(rawDate)
-            dataChegada = `${excelDate.y}-${String(excelDate.m).padStart(2, "0")}-${String(excelDate.d).padStart(2, "0")}`
-          } else {
-            const dateStr = String(rawDate).trim()
-            // Tenta dd/mm/yyyy
-            const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-            if (brMatch) {
-              dataChegada = `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`
-            } else {
-              dataChegada = dateStr
-            }
-          }
+        const data = await fileUpload.json();
+
+        if (!fileUpload.ok) {
+          throw new Error(data.error || "Erro no upload");
         }
 
-        return { chassi, modelo, dataChegada }
-      }).filter((e) => e.chassi)
+        const res = await fetch("/api/logistica", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entradas),
+        });
 
-      if (entradas.length === 0) {
-        setImportResult({ adicionados: 0, atualizados: 0 })
-        return
+        const result = await res.json();
+        setImportResult(result);
+        mutate("/api/logistica");
+        mutate("/api/clientes");
+      } catch {
+        setImportResult({ adicionados: 0, atualizados: 0 });
+      } finally {
+        setImporting(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
-
-      const res = await fetch("/api/logistica", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entradas),
-      })
-
-      const result = await res.json()
-      setImportResult(result)
-      mutate("/api/logistica")
-      mutate("/api/clientes")
-    } catch {
-      setImportResult({ adicionados: 0, atualizados: 0 })
-    } finally {
-      setImporting(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
-    }
-  }, [])
+    },
+    [],
+  );
 
   if (!authenticated) {
     return (
@@ -187,8 +169,8 @@ export function LogisticaTab() {
               placeholder="Senha de acesso"
               value={password}
               onChange={(e) => {
-                setPassword(e.target.value)
-                setPasswordError(false)
+                setPassword(e.target.value);
+                setPasswordError(false);
               }}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             />
@@ -201,7 +183,7 @@ export function LogisticaTab() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -218,8 +200,8 @@ export function LogisticaTab() {
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             onClick={() => {
-              setForm({ chassi: "", modelo: "", dataChegada: "" })
-              setDialogOpen(true)
+              setForm({ chassi: "", modelo: "", dataChegada: "" });
+              setDialogOpen(true);
             }}
             size="sm"
           >
@@ -290,8 +272,9 @@ export function LogisticaTab() {
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               A planilha deve conter as colunas: <strong>chassi</strong>,{" "}
-              <strong>modelo</strong> e <strong>dataChegada</strong> (ou &ldquo;Data
-              Chegada&rdquo;). Formatos de data aceitos: dd/mm/aaaa ou aaaa-mm-dd.
+              <strong>modelo</strong> e <strong>dataChegada</strong> (ou
+              &ldquo;Data Chegada&rdquo;). Formatos de data aceitos: dd/mm/aaaa
+              ou aaaa-mm-dd.
             </p>
           </div>
         </CardContent>
@@ -331,7 +314,9 @@ export function LogisticaTab() {
                       <span className="font-mono text-xs">{e.chassi}</span>
                     </TableCell>
                     <TableCell>{e.modelo}</TableCell>
-                    <TableCell>{formatDate(e.dataChegada)}</TableCell>
+                    <TableCell>
+                      {new Date(e.dataChegada).toLocaleDateString("pt-BR")}
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {new Date(e.criadoEm).toLocaleString("pt-BR")}
                     </TableCell>
@@ -400,5 +385,5 @@ export function LogisticaTab() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
