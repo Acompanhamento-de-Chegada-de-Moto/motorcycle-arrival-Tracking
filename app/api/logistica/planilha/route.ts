@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     const headerRow = worksheet.getRow(1);
 
-    const expectedHeaders = ["chassi", "dataChegada", "modelo"];
+    const expectedHeaders = ["chassi", "modelo", "dataChegada"];
 
     const actualHeaders = [
       String(headerRow.getCell(1).value ?? "").trim(),
@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
       if (rowNumber === 1) return;
 
       const chassi = String(row.getCell(1).value ?? "").trim();
-      const dataChegadaRaw = row.getCell(2).value;
-      const modelo = String(row.getCell(3).value ?? "").trim();
+      const modelo = String(row.getCell(2).value ?? "").trim();
+      const dataChegadaRaw = row.getCell(3).value;
 
       if (!chassi || !dataChegadaRaw || !modelo) {
         errors.push({
